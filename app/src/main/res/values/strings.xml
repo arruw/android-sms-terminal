@@ -8,7 +8,16 @@
 
 <array name="empty_array"></array>
 
+<string name="smst_help">
+    smsts help\n
+    smsts sound [on/off]\n
+    smsts data [on/off]\n
+    smsts wifi [on/off]\n
+    smsts sync [on/off]
+</string>
+
 <array name="commands">
+    <item>smsts help</item>
     <item>smsts sound on</item>
     <item>smsts sound off</item>
     <item>smsts data on</item>
@@ -17,8 +26,6 @@
     <item>smsts wifi off</item>
     <item>smsts sync on</item>
     <item>smsts sync off</item>
-
-    <item>smsts camera</item>
 </array>
 
 </resources>
