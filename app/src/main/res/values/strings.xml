@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+<string name="app_full_name">SMS Terminal</string>
+<string name="app_description">Remote control via SMS messaging.</string>
+
+<string name="action_settings">Settings</string>
+
+<array name="empty_array"></array>
+
+<array name="commands">
+    <item>smsts sound on</item>
+    <item>smsts sound off</item>
+    <item>smsts data on</item>
+    <item>smsts data off</item>
+    <item>smsts wifi on</item>
+    <item>smsts wifi off</item>
+    <item>smsts sync on</item>
+    <item>smsts sync off</item>
+
+    <item>smsts camera</item>
+</array>
+
+</resources>

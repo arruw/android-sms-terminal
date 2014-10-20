@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+    <PreferenceCategory
+        android:title="Security" >
+
+        <CheckBoxPreference
+            android:key="enable_whitelist"
+            android:title="Enable whitelist"
+            android:summary="Use whitelistd for smst secure connection."
+            android:checked="true" />
+
+        <MultiSelectListPreference
+            android:key="whitelist"
+            android:title="Add to whitelist"
+            android:summary="Add telephon numbers to whitelist."
+            android:dependency="enable_whitelist"
+            android:entries="@array/empty_array"
+            android:entryValues="@array/empty_array"
+            android:defaultValue="@array/empty_array"
+            android:dialogTitle="Select users from contacts" />
+
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="About" >
+
+        <Preference
+            android:key="rate_app"
+            android:title="Write review" >
+            <intent
+                android:action="android.intent.action.VIEW"
+                android:data="http://play.google.com/store" />
+        </Preference>
+
+        <Preference
+            android:key="contact_app"
+            android:title="Contact" >
+            <intent
+                android:action="android.intent.action.VIEW"
+                android:data="mailto:matjaz.mav@gmail.com" />
+        </Preference>
+
+        <Preference
+            android:key="about_app"
+            android:title="About" >
+            <intent
+                android:action="ABOUT_ACTIVITY" />
+        </Preference>
+
+    </PreferenceCategory>
+
+</PreferenceScreen>
