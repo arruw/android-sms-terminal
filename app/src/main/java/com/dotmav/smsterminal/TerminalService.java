@@ -114,7 +114,7 @@ public class TerminalService extends Service{
     private void help(){
         Log.i("DEV", "help()");
         SmsManager smsManager = SmsManager.getDefault();
-        smsManager.sendTextMessage(number, null, (String) (getResources().getString(R.string.smst_help)), null, null);
+        smsManager.sendTextMessage(number, null, getResources().getString(R.string.smst_help), null, null);
     }
 
 }
