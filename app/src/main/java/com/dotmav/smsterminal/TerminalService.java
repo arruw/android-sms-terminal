@@ -8,13 +8,14 @@ import android.media.AudioManager;
 import android.net.ConnectivityManager;
 import android.net.wifi.WifiManager;
 import android.os.IBinder;
-import android.telephony.SmsManager;
 import android.util.Log;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 public class TerminalService extends Service{
+
+    private static final int CAMERA_REQUEST = 1888;
 
     private boolean secured = false;
 
@@ -52,13 +53,12 @@ public class TerminalService extends Service{
             wifi(cmd[2]);
         } else if(cmd[1].equals("sync")){
             sync(cmd[2]);
-        } else if(cmd[1].equals("help")){
-            help();
+        } else if(cmd[1].equals("camera")){
+            camera();
         }
     }
 
     private void sound(String arg){
-        Log.i("DEV", "sound("+arg+")");
         AudioManager am = (AudioManager) getSystemService(getApplicationContext().AUDIO_SERVICE);
         if(arg.equals("on")){
             am.setStreamVolume(AudioManager.STREAM_RING, am.getStreamMaxVolume(AudioManager.STREAM_RING), 0);
@@ -69,7 +69,6 @@ public class TerminalService extends Service{
     }
 
     private void data(String arg){
-        Log.i("DEV", "data("+arg+")");
         try {
             final ConnectivityManager conman = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
             final Class conmanClass = Class.forName(conman.getClass().getName());
@@ -93,7 +92,6 @@ public class TerminalService extends Service{
     }
 
     private void wifi(String arg){
-        Log.i("DEV", "wifi("+arg+")");
         WifiManager wifiManager = (WifiManager) this.getSystemService(Context.WIFI_SERVICE);
         if(arg.equals("on") && !wifiManager.isWifiEnabled()){
             wifiManager.setWifiEnabled(true);
@@ -103,7 +101,6 @@ public class TerminalService extends Service{
     }
 
     private void sync(String arg){
-        Log.i("DEV", "sync("+arg+")");
         if(arg.equals("on")){
             ContentResolver.setMasterSyncAutomatically(true);
         } else if(arg.equals("off")){
@@ -111,10 +108,10 @@ public class TerminalService extends Service{
         }
     }
 
-    private void help(){
-        Log.i("DEV", "help()");
-        SmsManager smsManager = SmsManager.getDefault();
-        smsManager.sendTextMessage(number, null, (String) (getResources().getString(R.string.smst_help)), null, null);
+    private void camera(){
+        Intent i = new Intent(this, ForResult.class);
+        i.putExtra("request", CAMERA_REQUEST);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(i);
     }
-
 }
