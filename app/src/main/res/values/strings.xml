@@ -17,8 +17,7 @@
     <item>smsts wifi off</item>
     <item>smsts sync on</item>
     <item>smsts sync off</item>
-
-    <item>smsts camera</item>
+    <item>smsts bash</item>
 </array>
 
 </resources>

