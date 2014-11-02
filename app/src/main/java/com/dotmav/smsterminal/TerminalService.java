@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.media.AudioManager;
 import android.net.ConnectivityManager;
 import android.net.wifi.WifiManager;
+import android.os.Environment;
 import android.os.IBinder;
 import android.telephony.SmsManager;
 import android.util.Log;
@@ -15,8 +16,12 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.sql.Array;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class TerminalService extends Service{
 
@@ -119,51 +124,84 @@ public class TerminalService extends Service{
     }
 
     private void bash(String arg){
-        arg = "cd /mnt/sdcard; " + arg + " > .smst;";
-        Log.i("DEV", arg);
-        Intent bash = new Intent(TerminalService.this, ForResult.class);
-        bash.putExtra("command", arg);
-        bash.putExtra("request", TERMINAL_REQUEST);
-        bash.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        startActivity(bash);
-
-        new Thread(){
-            @Override
-            public void run(){
-                try{
-                    File file = new File("/mnt/sdcard/.smst");
-                    while(!file.exists()){}
-                    Log.i("DEV", "sleep(1000)");
-                    sleep(1000);
-                    Log.i("DEV", "file exists");
-                    StringBuilder output = new StringBuilder();
-                    try{
-                        BufferedReader br = new BufferedReader(new FileReader(file));
-                        String line;
-
-                        while((line = br.readLine()) != null){
-                            output.append(line);
-                            output.append('\n');
-                        }
-                    }catch(Exception e){
-                        e.printStackTrace();
+        File folder = new File(Environment.getExternalStorageDirectory() + "/smst");
+        boolean exists = true;
+        if(!folder.exists()){
+            exists = folder.mkdir();
+        }
+        if(exists) {
+            String num = "0000";
+            for (File f : folder.listFiles()) {
+                if(f.isFile()) {
+                    String name = f.getName().substring(5);
+                    if(num.compareTo(name) < 0){
+                        num = name;
                     }
-                    Log.i("OUTPUT", output.toString());
-
-                    SmsManager smsManager = SmsManager.getDefault();
-                    smsManager.sendTextMessage(number, null, output.toString(), null, null);
-
-                    Log.i("DEV", "cd /mnt/sdcard; rm .smst; exit;");
-                    Intent bash = new Intent(TerminalService.this, ForResult.class);
-                    bash.putExtra("command", "cd /mnt/sdcard; rm .smst; exit;");
-                    bash.putExtra("request", TERMINAL_REQUEST);
-                    bash.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    startActivity(bash);
-                }catch (Exception e){
-                    e.printStackTrace();
                 }
             }
-        }.start();
+            int new_file_index = Integer.parseInt(num)+1;
+            final String number = String.format("%04d", new_file_index);
+            arg = "cd /sdcard; " + arg + " > /sdcard/smst/smstl"+number+"; echo '...EOF...' >> /sdcard/smst/smstl"+number+"; exit;";
+            startATE(arg);
+            new Thread() {
+                @Override
+                public void run() {
+                    try {
+                        File file = new File("/sdcard/smst/smstl"+number);
+                        while (!file.exists()){}
+                        final StringBuilder output = new StringBuilder();
+                        try {
+                            final RandomAccessFile r = new RandomAccessFile(file, "r");
+                            String line = null;
+                            while ((line = r.readLine()) != null) {
+                                output.append(line);
+                                output.append('\n');
+                                Log.i("smstl"+number, line);
+                            }
+                            r.seek(r.getFilePointer());
+                            final Timer timer = new Timer();
+                            timer.scheduleAtFixedRate(new TimerTask() {
+                                @Override
+                                public void run() {
+                                    Log.i("DEV", "new check");
+                                    String line = null;
+                                    try {
+                                        while ((line = r.readLine()) != null) {
+                                            output.append(line);
+                                            output.append('\n');
+                                            Log.i("smstl"+number, line);
+                                            if (line.equals("...EOF...")) {
+                                                timer.cancel();
+                                                //startATE("rm /sdcard/smst/smstl"+number+";");
+                                                //Log.i("OUTPUT", output.toString());
+                                                //SmsManager smsManager = SmsManager.getDefault();
+                                                //smsManager.sendTextMessage(number, null,output.toString(), null, null);
+                                                break;
+                                            }
+                                        }
+                                        r.seek(r.getFilePointer());
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                    }
+                                }
+                            }, 0, 1000);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }.start();
+        }
+    }
 
+    private void startATE(String cmd){
+        Log.i("DEV", "startATE( "+cmd+" )");
+        Intent bash = new Intent("jackpal.androidterm.RUN_SCRIPT");
+        bash.addCategory(Intent.CATEGORY_DEFAULT);
+        bash.putExtra("jackpal.androidterm.iInitialCommand", cmd);
+        bash.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(bash);
     }
 }

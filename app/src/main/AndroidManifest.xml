@@ -22,14 +22,6 @@
             android:name=".PreferencesActivity"
             android:label="@string/app_full_name" >
         </activity>
-        <activity
-            android:name=".ForResult"
-            android:theme="@android:style/Theme.NoDisplay" >
-            <intent-filter>
-                <action android:name="smst.action.FOR_RESULT" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
-        </activity>
 
         <receiver
             android:name=".SmsReceiver" >
@@ -57,7 +49,6 @@
 
     <uses-permission android:name="android.permission.WRITE_SYNC_SETTINGS" />
 
-    <uses-permission android:name="android.permission.CAMERA"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
 
     <uses-permission android:name="jackpal.androidterm.permission.RUN_SCRIPT" />
