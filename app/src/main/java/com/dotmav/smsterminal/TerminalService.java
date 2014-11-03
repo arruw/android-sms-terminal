@@ -9,27 +9,20 @@ import android.net.ConnectivityManager;
 import android.net.wifi.WifiManager;
 import android.os.Environment;
 import android.os.IBinder;
-import android.telephony.SmsManager;
 import android.util.Log;
 
-import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.FileWriter;
+import java.io.PrintWriter;
 import java.io.RandomAccessFile;
+import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.sql.Array;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class TerminalService extends Service{
-
-    private static final int TERMINAL_REQUEST = 1000;
 
     private boolean secured = false;
 
@@ -39,7 +32,6 @@ public class TerminalService extends Service{
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
 
-        secured = intent.getBooleanExtra("secured", false);
         command = intent.getStringExtra("command");
         number = intent.getStringExtra("number");
 
@@ -74,20 +66,29 @@ public class TerminalService extends Service{
             bash(options);
         } else {
             Log.i("DEV", "CMD not exists");
+            printData("CMD not exists\n");
         }
     }
 
     private void sound(String arg){
-        AudioManager am = (AudioManager) getSystemService(getApplicationContext().AUDIO_SERVICE);
-        if(arg.equals("on")){
-            am.setStreamVolume(AudioManager.STREAM_RING, am.getStreamMaxVolume(AudioManager.STREAM_RING), 0);
-        } else if(arg.equals("off")){
-            am.setStreamVolume(AudioManager.STREAM_RING, 0, 0);
-            am.setRingerMode(AudioManager.RINGER_MODE_SILENT);
+        printData("smsts sound "+arg);
+        try {
+            AudioManager am = (AudioManager) getSystemService(getApplicationContext().AUDIO_SERVICE);
+            if (arg.equals("on")) {
+                am.setStreamVolume(AudioManager.STREAM_RING, am.getStreamMaxVolume(AudioManager.STREAM_RING), 0);
+            } else if (arg.equals("off")) {
+                am.setStreamVolume(AudioManager.STREAM_RING, 0, 0);
+                am.setRingerMode(AudioManager.RINGER_MODE_SILENT);
+            }
+            printData(" OK\n");
+        } catch (Exception e) {
+            printException(e);
+            printData(" EX\n");
         }
     }
 
     private void data(String arg){
+        printData("smsts data "+arg);
         try {
             final ConnectivityManager conman = (ConnectivityManager) getApplicationContext().getSystemService(Context.CONNECTIVITY_SERVICE);
             final Class conmanClass = Class.forName(conman.getClass().getName());
@@ -103,53 +104,74 @@ public class TerminalService extends Service{
             } else if(arg.equals("off")){
                 setMobileDataEnabledMethod.invoke(connectivityManager, false);
             }
-
+            printData(" OK\n");
         } catch (Exception e) {
-            e.printStackTrace();
+            printException(e);
+            printData(" EX\n");
         }
 
     }
 
     private void wifi(String arg){
-        WifiManager wifiManager = (WifiManager) this.getSystemService(Context.WIFI_SERVICE);
-        if(arg.equals("on") && !wifiManager.isWifiEnabled()){
-            wifiManager.setWifiEnabled(true);
-        } else if(arg.equals("off") && wifiManager.isWifiEnabled()){
-            wifiManager.setWifiEnabled(false);
+        printData("smsts wifi "+arg);
+        try {
+            WifiManager wifiManager = (WifiManager) this.getSystemService(Context.WIFI_SERVICE);
+            if (arg.equals("on") && !wifiManager.isWifiEnabled()) {
+                wifiManager.setWifiEnabled(true);
+            } else if (arg.equals("off") && wifiManager.isWifiEnabled()) {
+                wifiManager.setWifiEnabled(false);
+            }
+            printData(" OK\n");
+        } catch (Exception e) {
+            printException(e);
+            printData(" EX\n");
         }
     }
 
     private void sync(String arg){
-        if(arg.equals("on")){
-            ContentResolver.setMasterSyncAutomatically(true);
-        } else if(arg.equals("off")){
-            ContentResolver.setMasterSyncAutomatically(false);
+        printData("smsts sync "+arg);
+        try {
+            if (arg.equals("on")) {
+                ContentResolver.setMasterSyncAutomatically(true);
+            } else if (arg.equals("off")) {
+                ContentResolver.setMasterSyncAutomatically(false);
+            }
+            printData(" OK\n");
+        } catch (Exception e) {
+            printException(e);
+            printData(" EX\n");
         }
     }
 
     private void bash(String arg){
-        File folder = new File(Environment.getExternalStorageDirectory() + "/smst");
-        boolean exists = true;
-        if(!folder.exists()){
-            exists = folder.mkdir();
-        }
-        if(exists) {
-            String num = "0000";
-            for (File f : folder.listFiles()) {
-                if(f.isFile()) {
-                    String name = f.getName().substring(5);
-                    if(num.compareTo(name) < 0){
-                        num = name;
+        printData("smsts bash "+arg);
+        try {
+            File folder = new File(Environment.getExternalStorageDirectory() + "/smst");
+            File folderBash = new File(Environment.getExternalStorageDirectory() + "/smst/bash");
+            boolean exists = true;
+            if (!folder.exists()) {
+                exists = folder.mkdir();
+                exists = folderBash.mkdir();
+            } else if (!folderBash.exists()) {
+                exists = folderBash.mkdir();
+            }
+            if (exists) {
+                String num = "0000";
+                for (File f : folderBash.listFiles()) {
+                    if (f.isFile()) {
+                        String name = f.getName().substring(5);
+                        if (num.compareTo(name) < 0) {
+                            num = name;
+                        }
                     }
                 }
-            }
-            int new_file_index = Integer.parseInt(num)+1;
-            final String number = String.format("%04d", new_file_index);
-            arg = "cd /sdcard; " + arg + " > /sdcard/smst/smstl"+number+"; echo '...EOF...' >> /sdcard/smst/smstl"+number+"; exit;";
-            startATE(arg);
-            try {
-                File file = new File("/sdcard/smst/smstl"+number);
-                while (!file.exists()){}
+                int new_file_index = Integer.parseInt(num) + 1;
+                final String index = String.format("%04d", new_file_index);
+                arg = "cd /sdcard; " + arg + " > /sdcard/smst/bash/smstl" + index + "; echo '...EOF...' >> /sdcard/smst/bash/smstl" + index + "; exit;";
+                startATE(arg);
+
+                File file = new File("/sdcard/smst/bash/smstl" + index);
+                while (!file.exists()) {}
                 final StringBuilder output = new StringBuilder();
                 try {
                     boolean skip = false;
@@ -158,17 +180,17 @@ public class TerminalService extends Service{
                     while ((line = r.readLine()) != null) {
                         output.append(line);
                         output.append('\n');
-                        Log.i("smstl"+number, line);
+                        Log.i("smstl" + index, line);
                         if (line.equals("...EOF...")) {
                             skip = true;
-                            //startATE("rm /sdcard/smst/smstl"+number+";");
+                            //startATE("rm /sdcard/smst/bash/smstl"+number+";");
                             //Log.i("OUTPUT", output.toString());
                             //SmsManager smsManager = SmsManager.getDefault();
                             //smsManager.sendTextMessage(number, null,output.toString(), null, null);
                             break;
                         }
                     }
-                    if(!skip) {
+                    if (!skip) {
                         r.seek(r.getFilePointer());
                         final Timer timer = new Timer();
                         timer.scheduleAtFixedRate(new TimerTask() {
@@ -180,10 +202,10 @@ public class TerminalService extends Service{
                                     while ((line = r.readLine()) != null) {
                                         output.append(line);
                                         output.append('\n');
-                                        Log.i("smstl" + number, line);
+                                        Log.i("smstl" + index, line);
                                         if (line.equals("...EOF...")) {
                                             timer.cancel();
-                                            //startATE("rm /sdcard/smst/smstl"+number+";");
+                                            //startATE("rm /sdcard/smst/bash/smstl"+index+";");
                                             //Log.i("OUTPUT", output.toString());
                                             //SmsManager smsManager = SmsManager.getDefault();
                                             //smsManager.sendTextMessage(number, null,output.toString(), null, null);
@@ -192,17 +214,19 @@ public class TerminalService extends Service{
                                     }
                                     r.seek(r.getFilePointer());
                                 } catch (Exception e) {
-                                    e.printStackTrace();
+                                    printException(e);
                                 }
                             }
                         }, 0, 1000);
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    printException(e);
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
             }
+            printData(" OK\n");
+        } catch (Exception e) {
+            printException(e);
+            printData(" EX\n");
         }
     }
 
@@ -213,5 +237,48 @@ public class TerminalService extends Service{
         bash.putExtra("jackpal.androidterm.iInitialCommand", cmd);
         bash.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         startActivity(bash);
+    }
+
+    private void printException(Exception e){
+        try {
+            File folder = new File(Environment.getExternalStorageDirectory() + "/smst");
+            boolean exists = true;
+            if (!folder.exists()) {
+                exists = folder.mkdir();
+            }
+            e.printStackTrace();
+
+            if(exists) {
+                StringWriter sw = new StringWriter();
+                PrintWriter pw = new PrintWriter(sw);
+                e.printStackTrace(pw);
+                sw.toString();
+
+                File exlog = new File("/sdcard/smst/smstExceptionLog");
+                BufferedWriter output = new BufferedWriter(new FileWriter(exlog, true));
+                output.append(sw.toString());
+                output.close();
+            }
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
+
+    private void printData(String data){
+        try {
+            File folder = new File(Environment.getExternalStorageDirectory() + "/smst");
+            boolean exists = true;
+            if (!folder.exists()) {
+                exists = folder.mkdir();
+            }
+            if(exists) {
+                File dalog = new File("/sdcard/smst/smstDataLog");
+                BufferedWriter output = new BufferedWriter(new FileWriter(dalog, true));
+                output.append(data);
+                output.close();
+            }
+        } catch (Exception e) {
+            printException(e);
+        }
     }
 }
