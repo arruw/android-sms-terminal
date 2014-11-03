@@ -20,6 +20,10 @@ import java.io.RandomAccessFile;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.sql.Array;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -143,56 +147,62 @@ public class TerminalService extends Service{
             final String number = String.format("%04d", new_file_index);
             arg = "cd /sdcard; " + arg + " > /sdcard/smst/smstl"+number+"; echo '...EOF...' >> /sdcard/smst/smstl"+number+"; exit;";
             startATE(arg);
-            new Thread() {
-                @Override
-                public void run() {
-                    try {
-                        File file = new File("/sdcard/smst/smstl"+number);
-                        while (!file.exists()){}
-                        final StringBuilder output = new StringBuilder();
-                        try {
-                            final RandomAccessFile r = new RandomAccessFile(file, "r");
-                            String line = null;
-                            while ((line = r.readLine()) != null) {
-                                output.append(line);
-                                output.append('\n');
-                                Log.i("smstl"+number, line);
-                            }
-                            r.seek(r.getFilePointer());
-                            final Timer timer = new Timer();
-                            timer.scheduleAtFixedRate(new TimerTask() {
-                                @Override
-                                public void run() {
-                                    Log.i("DEV", "new check");
-                                    String line = null;
-                                    try {
-                                        while ((line = r.readLine()) != null) {
-                                            output.append(line);
-                                            output.append('\n');
-                                            Log.i("smstl"+number, line);
-                                            if (line.equals("...EOF...")) {
-                                                timer.cancel();
-                                                //startATE("rm /sdcard/smst/smstl"+number+";");
-                                                //Log.i("OUTPUT", output.toString());
-                                                //SmsManager smsManager = SmsManager.getDefault();
-                                                //smsManager.sendTextMessage(number, null,output.toString(), null, null);
-                                                break;
-                                            }
-                                        }
-                                        r.seek(r.getFilePointer());
-                                    } catch (Exception e) {
-                                        e.printStackTrace();
-                                    }
-                                }
-                            }, 0, 1000);
-                        } catch (Exception e) {
-                            e.printStackTrace();
+            try {
+                File file = new File("/sdcard/smst/smstl"+number);
+                while (!file.exists()){}
+                final StringBuilder output = new StringBuilder();
+                try {
+                    boolean skip = false;
+                    final RandomAccessFile r = new RandomAccessFile(file, "r");
+                    String line = null;
+                    while ((line = r.readLine()) != null) {
+                        output.append(line);
+                        output.append('\n');
+                        Log.i("smstl"+number, line);
+                        if (line.equals("...EOF...")) {
+                            skip = true;
+                            //startATE("rm /sdcard/smst/smstl"+number+";");
+                            //Log.i("OUTPUT", output.toString());
+                            //SmsManager smsManager = SmsManager.getDefault();
+                            //smsManager.sendTextMessage(number, null,output.toString(), null, null);
+                            break;
                         }
-                    } catch (Exception e) {
-                        e.printStackTrace();
                     }
+                    if(!skip) {
+                        r.seek(r.getFilePointer());
+                        final Timer timer = new Timer();
+                        timer.scheduleAtFixedRate(new TimerTask() {
+                            @Override
+                            public void run() {
+                                Log.i("DEV", "new check");
+                                String line = null;
+                                try {
+                                    while ((line = r.readLine()) != null) {
+                                        output.append(line);
+                                        output.append('\n');
+                                        Log.i("smstl" + number, line);
+                                        if (line.equals("...EOF...")) {
+                                            timer.cancel();
+                                            //startATE("rm /sdcard/smst/smstl"+number+";");
+                                            //Log.i("OUTPUT", output.toString());
+                                            //SmsManager smsManager = SmsManager.getDefault();
+                                            //smsManager.sendTextMessage(number, null,output.toString(), null, null);
+                                            break;
+                                        }
+                                    }
+                                    r.seek(r.getFilePointer());
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }, 0, 1000);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-            }.start();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
